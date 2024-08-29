@@ -4,39 +4,41 @@ import os
 # Check if app is running within docker or directly, some directories need to be adressed differently
 SECRET_KEY = os.environ.get("AM_I_IN_A_DOCKER_CONTAINER", "").lower() in ("yes", "y", "on", "true", "1")
 
-# Pandas is used for data manipulation and analysis.
-# The atexit module is used to register functions to be called upon normal program termination.
-import atexit
-
-# The logging module is used to log messages for tracking events that happen when the software runs.
-import logging
-
-# The datetime module supplies classes for manipulating dates and times.
-from datetime import datetime
-
-# RotatingFileHandler is used to manage log files, allowing them to rotate when they reach a certain size.
-from logging.handlers import RotatingFileHandler
-from typing import Generator
-
-import pandas as pd
-
 # FastAPI is used to create the web application and handle HTTP requests.
-from fastapi import Depends, FastAPI, Form, HTTPException
+from fastapi import FastAPI, Form, Depends, HTTPException
 
 # HTMLResponse and RedirectResponse are used to return HTML content and handle redirects.
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
+# SQLAlchemy ORM is used to interact with the database in an object-oriented way.
+from sqlalchemy.orm import sessionmaker, Session
+
+# SQLAlchemy core is used to create the database engine and perform SQL queries.
+from sqlalchemy import create_engine, select, func, text
+
+# Importing the database models and session configuration.
+from app.setup_database.models import AirPollutionData, SessionLocal, Base
+
+# Pandas is used for data manipulation and analysis.
+import pandas as pd
+
 # Pydantic is used for data validation and settings management using Python type annotations.
 from pydantic import BaseModel
 
-# SQLAlchemy core is used to create the database engine and perform SQL queries.
-from sqlalchemy import create_engine, func, select, text
+# The logging module is used to log messages for tracking events that happen when the software runs.
+import logging
 
-# SQLAlchemy ORM is used to interact with the database in an object-oriented way.
-from sqlalchemy.orm import Session, sessionmaker
+# RotatingFileHandler is used to manage log files, allowing them to rotate when they reach a certain size.
+from logging.handlers import RotatingFileHandler
 
-# Importing the database models and session configuration.
-from app.setup_database.models import AirPollutionData, Base
+# The atexit module is used to register functions to be called upon normal program termination.
+import atexit
+
+# The datetime module supplies classes for manipulating dates and times.
+from datetime import datetime
+
+# Import the Generator type from the typing module to specify the return type of generator functions
+from typing import Generator
 
 # Create a logger
 logger = logging.getLogger("my_logger")
@@ -126,26 +128,26 @@ async def main(db: Session = Depends(get_db)) -> HTMLResponse:
         # Generate the HTML content for the form.
         content = f"""
         <body>
-            <header>
-                <h1>Welcome to Air Pollution Data Viewer</h1>
-                <p>Select an entity and optionally a year range to view the summary statistics</p>
-            </header>
-            <form action="/get_stats/" method="post">
-                <label for="entity">Select an entity:</label>
-                <select name="entity" id="entity">
-                    {entity_options}
-                </select>
-                <br><br>
-                <label for="start_year">Select start year (optional). Statistics is calculated including provided year. Minimum is 1750:</label>
-                <input type="number" name="start_year" id="start_year" min="1750" max="2022">
-                <br><br>
-                <label for="end_year">Select end year (optional). Statistics is calculated including provided year. Maximum is 2022:</label>
-                <input type="number" name="end_year" id="end_year" min="1750" max="2022">
-                <br><br>
-                <input type="submit" value="Show Statistics">
-            </form>
-        </body>
-        """  # noqa: E501
+           <header>
+               <h1>Welcome to Air Pollution Data Viewer</h1>
+               <p>Select an entity and optionally a year range to view the summary statistics</p>    
+           </header>
+           <form action="/get_stats/" method="post">
+               <label for="entity">Select an entity:</label>
+               <select name="entity" id="entity" required>
+                   {entity_options}
+               </select>
+               <br><br>
+               <label for="start_year">Select start year (optional). Statistics is calculated including provided year. Minimum is 1750:</label>   
+               <input type="number" name="start_year" id="start_year" min="1750" max="2022" step="1" pattern="\\d{4}">     
+               <br><br>     
+               <label for="end_year">Select end year (optional). Statistics is calculated including provided year. Maximum is 2022:</label>   
+               <input type="number" name="end_year" id="end_year" min="1750" max="2022" step="1" pattern="\\d{4}">   
+               <br><br>     
+               <input type="submit" value="Show Statistics">     
+           </form>     
+        </body>    
+        """
 
         # Return the HTML content as a response.
         return HTMLResponse(content=content)
@@ -156,9 +158,22 @@ async def main(db: Session = Depends(get_db)) -> HTMLResponse:
 
 
 # Endpoint to handle form submission and redirect the appropriate statistics page
-@app.post("/get_stats/")
-async def get_stats(entity: str = Form(...), start_year: int = Form(None), end_year: int = Form(None)) -> Response:
+@app.post("/get_stats/", response_class=HTMLResponse)
+async def get_stats(entity: str = Form(...), start_year: int = Form(None), end_year: int = Form(None),
+                    db: Session = Depends(get_db)):
     try:
+        if start_year is None and end_year is not None:
+            # Fetch the minimum and maximum available years from the database
+            min_year_record = db.query(AirPollutionData).filter(AirPollutionData.entity == entity).order_by(
+                AirPollutionData.year).first()
+            start_year = min_year_record.year
+
+        elif end_year is None and start_year is not None:
+            max_year_record = db.query(AirPollutionData).filter(AirPollutionData.entity == entity).order_by(
+                AirPollutionData.year.desc()).first()
+            end_year = max_year_record.year
+
+        # Validate the year range
         if start_year and end_year:
             if start_year < 1750 or end_year > 2022:
                 return HTMLResponse(content="<p>Year range must be between 1750 and 2022</p>")
@@ -246,7 +261,6 @@ async def get_entity_stats(entity: str, start_year: int, end_year: int, db: Sess
     except Exception as e:
         logger.error(f"Error in get_stats endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
-
 
 # Endpoint to get statistics for a specific entity for all years
 @app.get("/data/{entity}/all/stats", response_class=HTMLResponse)
