@@ -1,10 +1,6 @@
 name: Build and Push Docker Image
 
 on:
-  push:
-    branches:
-      - dev
-      - push_to_container_repo # remove after testing
   workflow_run:
     workflows: [Test in Docker]
       # - "Test in Poetry environment"
