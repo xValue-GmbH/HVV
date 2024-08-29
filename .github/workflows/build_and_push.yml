@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows:
       - "Test in Docker"
-      - "Test in Poetry environment"
+      # - "Test in Poetry environment"
     types:
       - completed
     branches:
