@@ -33,7 +33,6 @@ jobs:
   # Job 2: Test in Docker
   docker-tests:
     runs-on: ubuntu-latest
-    needs: poetry-tests  # Runs only after poetry-tests job succeeds
     steps:
       - uses: actions/checkout@v2
 
@@ -98,7 +97,9 @@ jobs:
   # Job 3: Build and Push Docker Image
   build-and-push:
     runs-on: ubuntu-latest
-    needs: docker-tests  # Runs only after docker-tests job succeeds
+    needs:
+      - poetry-tests  # Runs only after poetry-tests job succeeds
+      - docker-tests  # Runs only after docker-tests job succeeds
     if: github.ref == 'refs/heads/push_to_container_repo'  # change if test was successful
     steps:
       - uses: actions/checkout@v2
