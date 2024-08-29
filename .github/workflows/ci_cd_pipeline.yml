@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - dev
-      - push_to_container_repo  # Remove after testing
-  workflow_dispatch:  # Allows manual triggering if needed
 
 permissions:
   contents: write
@@ -109,7 +107,7 @@ jobs:
     needs:
       - poetry-tests  # Runs only after poetry-tests job succeeds
       - docker-tests  # Runs only after docker-tests job succeeds
-    if: github.ref == 'refs/heads/push_to_container_repo'  # change if test was successful
+    if: github.ref == 'refs/heads/dev'  # change if test was successful
     steps:
       - uses: actions/checkout@v2
 
