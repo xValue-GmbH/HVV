@@ -2,13 +2,14 @@ name: Build and Push Docker Image
 
 on:
   workflow_run:
-    workflows: [Test in Docker]
-      # - "Test in Poetry environment"
+    workflows:
+      - "Test in Docker"
+      - "Test in Poetry environment"
     types:
       - completed
     branches:
       - dev
-      - push_to_container_repo # remove after testing
+      - push_to_container_repo  # remove after testing
 
 permissions:
   contents: write  # Allows write access to contents, which might be necessary for certain actions
@@ -17,6 +18,8 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
     - name: Check out the repository
