@@ -33,7 +33,7 @@ jobs:
       - name: check style
         run: make style
 
-      -name: create log directory
+      - name: create log directory
         run: mkdir -p logs
 
       - name: Run tests
