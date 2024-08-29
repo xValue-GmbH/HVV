@@ -148,9 +148,22 @@ async def main(db: Session = Depends(get_db)):
 
 
 # Endpoint to handle form submission and redirect the appropriate statistics page
-@app.post("/get_stats/")
-async def get_stats(entity: str = Form(...), start_year: int = Form(None), end_year: int = Form(None)):
+@app.post("/get_stats/", response_class=HTMLResponse)
+async def get_stats(entity: str = Form(...), start_year: int = Form(None), end_year: int = Form(None),
+                    db: Session = Depends(get_db)):
     try:
+        if start_year is None and end_year is not None:
+            # Fetch the minimum and maximum available years from the database
+            min_year_record = db.query(AirPollutionData).filter(AirPollutionData.entity == entity).order_by(
+                AirPollutionData.year).first()
+            start_year = min_year_record.year
+
+        elif end_year is None and start_year is not None:
+            max_year_record = db.query(AirPollutionData).filter(AirPollutionData.entity == entity).order_by(
+                AirPollutionData.year.desc()).first()
+            end_year = max_year_record.year
+
+        # Validate the year range
         if start_year and end_year:
             if start_year < 1750 or end_year > 2022:
                 return HTMLResponse(content="<p>Year range must be between 1750 and 2022</p>")
@@ -163,8 +176,6 @@ async def get_stats(entity: str = Form(...), start_year: int = Form(None), end_y
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 # Endpoint to get statistics for a specific entity and year range
-
-
 @app.get("/data/{entity}/{start_year}/{end_year}/stats", response_class=HTMLResponse)
 async def get_stats(entity: str, start_year: int, end_year: int, db: Session = Depends(get_db)):
     try:
