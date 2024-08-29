@@ -27,6 +27,12 @@ jobs:
       - name: Install dependencies
         run: make create_environment
 
+      - name: use linting
+        run: make lint
+
+      - name: check style
+        run: make style
+
       - name: Run tests
         run: make test
 
