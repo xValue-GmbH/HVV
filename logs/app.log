@@ -1,1 +1,4 @@
-# logfile
+# logfile2024-08-29 15:00:23,937 - my_logger - INFO - Application started at 2024-08-29 15:00:23.937309
+2024-08-29 15:00:25,540 - my_logger - INFO - Application ended at 2024-08-29 15:00:25.540967
+2024-08-29 15:01:17,638 - my_logger - INFO - Application started at 2024-08-29 15:01:17.638347
+2024-08-29 15:01:43,525 - my_logger - INFO - Application ended at 2024-08-29 15:01:43.525011
