@@ -1,16 +1,13 @@
-2024-08-27 10:02:36,080 - my_logger - INFO - Application started at 2024-08-27 10:02:36.080512
-2024-08-27 10:02:36,191 - my_logger - INFO - Application ended at 2024-08-27 10:02:36.191211
-2024-08-27 10:03:27,231 - my_logger - INFO - Application started at 2024-08-27 10:03:27.231199
-2024-08-27 10:03:27,323 - my_logger - INFO - Application ended at 2024-08-27 10:03:27.323651
-2024-08-27 10:05:14,111 - my_logger - INFO - Application started at 2024-08-27 10:05:14.111474
-2024-08-27 10:05:14,210 - my_logger - INFO - Application ended at 2024-08-27 10:05:14.210184
-2024-08-27 10:07:16,893 - my_logger - INFO - Application started at 2024-08-27 10:07:16.892065
-2024-08-27 10:10:08,950 - my_logger - INFO - Received data: entity='An Example Entity' year=2023 nitrogen_oxide=100.5 sulphur_dioxide=50.2 carbon_monoxide=30.1 organic_carbon=20.0 nmvoc=10.5 black_carbon=0.8 ammonia=0.6
-2024-08-27 10:10:08,998 - my_logger - INFO - Data added to DB: entity='An Example Entity' year=2023 nitrogen_oxide=100.5 sulphur_dioxide=50.2 carbon_monoxide=30.1 organic_carbon=20.0 nmvoc=10.5 black_carbon=0.8 ammonia=0.6
-2024-08-27 10:11:34,389 - my_logger - INFO - Application ended at 2024-08-27 10:11:34.389106
-2024-08-27 08:22:31,905 - my_logger - INFO - Application started at 2024-08-27 08:22:31.905201
-2024-08-27 10:23:20,938 - my_logger - INFO - Application started at 2024-08-27 10:23:20.938508
-2024-08-27 10:23:35,833 - my_logger - INFO - Application ended at 2024-08-27 10:23:35.833076
-2024-08-27 08:23:54,049 - my_logger - INFO - Application ended at 2024-08-27 08:23:54.049853
-2024-08-27 08:27:33,999 - my_logger - INFO - Application started at 2024-08-27 08:27:33.999696
-2024-08-27 08:45:56,549 - my_logger - INFO - Application ended at 2024-08-27 08:45:56.549432
+2024-08-29 15:22:54,147 - my_logger - INFO - Application ended at 2024-08-29 15:22:54.147561
+2024-08-29 15:24:31,845 - my_logger - INFO - Application started at 2024-08-29 15:24:31.845281
+2024-08-29 15:24:33,671 - my_logger - INFO - Application ended at 2024-08-29 15:24:33.671061
+2024-08-29 15:26:39,829 - my_logger - INFO - Application started at 2024-08-29 15:26:39.829737
+2024-08-29 15:26:41,743 - my_logger - INFO - Application ended at 2024-08-29 15:26:41.743488
+2024-08-29 15:27:41,859 - my_logger - INFO - Application started at 2024-08-29 15:27:41.859291
+2024-08-29 15:27:42,383 - my_logger - INFO - Application ended at 2024-08-29 15:27:42.383848
+2024-08-29 15:28:27,283 - my_logger - INFO - Application started at 2024-08-29 15:28:27.283886
+2024-08-29 15:28:29,272 - my_logger - INFO - Application ended at 2024-08-29 15:28:29.272448
+2024-08-29 15:33:25,489 - my_logger - INFO - Application started at 2024-08-29 15:33:25.489773
+2024-08-29 15:33:27,233 - my_logger - INFO - Application ended at 2024-08-29 15:33:27.233673
+2024-08-29 15:37:49,118 - my_logger - INFO - Application started at 2024-08-29 15:37:49.118845
+2024-08-29 15:37:49,851 - my_logger - INFO - Application ended at 2024-08-29 15:37:49.851320

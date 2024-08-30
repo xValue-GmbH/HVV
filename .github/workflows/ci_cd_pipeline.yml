@@ -1,0 +1,133 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # Job 1: Test in Poetry Environment
+  poetry-tests:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip-ci]')"
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies
+        run: make create_environment
+
+      - name: use linting
+        run: make lint
+
+      - name: check style
+        run: make style
+
+      - name: create log directory
+        run: mkdir -p logs
+
+      - name: Run tests
+        run: make test
+
+  # Job 2: Test in Docker
+  docker-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.12
+
+      - name: Set up Docker-in-Docker
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build Docker image
+        run: docker build -t hvv_docker .
+
+      - name: Run Docker container
+        run: |
+          docker run -d -p 8000:8000 -v "$(pwd)/logs:/app/src/app/logs" --name hvv_container hvv_docker
+
+      - name: Sleep for 10 seconds
+        run: sleep 10
+
+      - name: Check Docker container status
+        run: docker ps -a
+
+      - name: Inspect Docker logs
+        run: docker logs hvv_container
+
+      - name: Get Docker container ID
+        id: get_docker_id
+        run: |
+          echo "container_id=$(docker ps -qf 'ancestor=hvv_docker')" >> $GITHUB_ENV
+
+      - name: Test POST with curl
+        run: |
+          docker exec ${{ env.container_id }} curl -X POST "http://localhost:8000/data" \
+          -H "Content-Type: application/json" \
+          -d '{"entity": "An Example Entity", "year": 2023, "nitrogen_oxide": 10.5, "sulphur_dioxide": 5.2, "carbon_monoxide": 3.1, "organic_carbon": 2.0, "nmvoc": 1.5, "black_carbon": 0.8, "ammonia": 0.6}'
+
+      - name: Test PUT with curl
+        run: |
+          docker exec ${{ env.container_id }} curl -X PUT "http://localhost:8000/data/An%20Example%20Entity/2023" \
+          -H "Content-Type: application/json" \
+          -d '{"entity": "An Example Entity", "year": 2023, "nitrogen_oxide": 12.5, "sulphur_dioxide": 5.2, "carbon_monoxide": 3.1, "organic_carbon": 2.0, "nmvoc": 1.5, "black_carbon": 0.8, "ammonia": 0.6}'
+
+      - name: Test DELETE with curl
+        run: |
+          response=$(docker exec ${{ env.container_id }} curl -s -X DELETE "http://localhost:8000/data/An%20Example%20Entity/2023")
+          echo "Response: $response"
+          if [[ "$response" == *"Data point for An Example Entity in 2023 has been deleted successfully."* ]]; then
+            echo "Delete test passed."
+          else
+            echo "Delete test failed."
+            exit 1
+          fi
+
+      - name: Terminate Docker
+        if: always()
+        run: |
+          docker stop ${{ env.container_id }}
+          docker rm ${{ env.container_id }}
+
+  # Job 3: Build and Push Docker Image
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs:
+      - poetry-tests  # Runs only after poetry-tests job succeeds
+      - docker-tests  # Runs only after docker-tests job succeeds
+    if: github.ref == 'refs/heads/dev'  # change if test was successful
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set repository owner to lowercase
+        id: set_lowercase
+        run: echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.REPO_OWNER }}/hvv_app:latest
+            ghcr.io/${{ env.REPO_OWNER }}/hvv_app:${{ github.sha }}
