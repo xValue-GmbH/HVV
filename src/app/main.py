@@ -69,7 +69,7 @@ logger.addHandler(file_handler)
 app = FastAPI()
 
 # Mount the static files directory
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 
 # Log application start
 logger.info(f"Application started at {datetime.now()}")
@@ -134,7 +134,7 @@ async def main(db: Session = Depends(get_db)) -> HTMLResponse:
         <html>
         <head>
             <link rel="stylesheet" type="text/css" href="/static/styles.css">
-        </head> 
+        </head>
         <body>
             <div class="header">Welcome to Air Pollution Data Viewer</div>
             <div class="form-container">
@@ -152,7 +152,7 @@ async def main(db: Session = Depends(get_db)) -> HTMLResponse:
                 </form>
             </div>
         </body>
-        </html>         
+        </html>
         """  # noqa: E501
         # Return the HTML content as a response.
         return HTMLResponse(content=content)
@@ -202,24 +202,35 @@ async def get_stats(
 
 # Endpoint to get statistics for a specific entity and year range
 @app.get("/data/{entity}/{start_year}/{end_year}/stats", response_class=HTMLResponse)
-async def get_stats(entity: str, start_year: int, end_year: int, db: Session = Depends(get_db)):
+async def get_entity_stats(entity: str, start_year: int, end_year: int, db: Session = Depends(get_db)) -> HTMLResponse:
     try:
-        data = db.query(AirPollutionData).filter(
-            AirPollutionData.entity == entity,
-            AirPollutionData.year >= start_year,
-            AirPollutionData.year <= end_year
-        ).all()
+        data = (
+            db.query(AirPollutionData)
+            .filter(
+                AirPollutionData.entity == entity,
+                AirPollutionData.year >= start_year,
+                AirPollutionData.year <= end_year,
+            )
+            .all()
+        )
 
         if not data:
             return HTMLResponse(content="<p>Data not found</p>")
-        # In contrast to the calculation across all years, here, we take the approach of calculating median/sd by pandas directly.
-        # This shall demonstrate another option and work well with small datasets, in contrast to the extended selection, assuming a large database in the real use case
+        # In contrast to the calculation across all years, here,
+        # we take the approach of calculating median/sd by pandas directly.
+        # This shall demonstrate another option and work well with small datasets,
+        # in contrast to the extended selection, assuming a large database in the real use case
 
         df = pd.DataFrame([d.__dict__ for d in data])
         # List of parameters to calculate statistics for
         parameters = [
-            "nitrogen_oxide", "sulphur_dioxide", "carbon_monoxide",
-            "organic_carbon", "nmvoc", "black_carbon", "ammonia"
+            "nitrogen_oxide",
+            "sulphur_dioxide",
+            "carbon_monoxide",
+            "organic_carbon",
+            "nmvoc",
+            "black_carbon",
+            "ammonia",
         ]
         # Sort the parameters alphabetically
         parameters.sort()
@@ -235,9 +246,10 @@ async def get_stats(entity: str, start_year: int, end_year: int, db: Session = D
             stats[parameter]["median"] = median
             stats[parameter]["stddev"] = stddev
 
-    # Generate the HTML content for the statistics
-        stats_html = "".join([
-            f"""
+        # Generate the HTML content for the statistics
+        stats_html = "".join(
+            [
+                f"""
             <section class="stat-section">
                 <h3>{'Non-methane Volatile Organic Compounds (NMVOC)' if param == 'nmvoc'
             else 'Nitrogen Oxide (NOx)' if param == 'nitrogen_oxide'
@@ -251,14 +263,17 @@ async def get_stats(entity: str, start_year: int, end_year: int, db: Session = D
                     <li><strong>Standard Deviation:</strong> {stats[param]['stddev']}</li>
                 </ul>
             </section>
-            """ for param in parameters
-        ])
+            """
+                for param in parameters
+            ]
+        )
         # Return the statistics as an HTML response.
-        return HTMLResponse(content=f"""
+        return HTMLResponse(
+            content=f"""
         <html>
         <head>
             <link rel="stylesheet" type="text/css" href="/static/styles.css">
-        </head> 
+        </head>
         <body>
             <div class="header">Statistics for all parameters for {entity} from {start_year} to {end_year}:</div>
             <div class="container">
@@ -266,20 +281,27 @@ async def get_stats(entity: str, start_year: int, end_year: int, db: Session = D
             </div>
         </body>
         </html>
-        """)
+        """
+        )
 
     except Exception as e:
-        logger.error("Error in get_stats endpoint", exc_info=True)
+        logger.error(f"Error in get_stats endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
 
 # Endpoint to get statistics for a specific entity for all years
 @app.get("/data/{entity}/all/stats", response_class=HTMLResponse)
-async def get_stats_all(entity: str, db: Session = Depends(get_db)):
+async def get_stats_all(entity: str, db: Session = Depends(get_db)) -> HTMLResponse:
     try:
         # List of parameters to calculate statistics for
         parameters = [
-            "nitrogen_oxide", "sulphur_dioxide", "carbon_monoxide",
-            "organic_carbon", "nmvoc", "black_carbon", "ammonia"
+            "nitrogen_oxide",
+            "sulphur_dioxide",
+            "carbon_monoxide",
+            "organic_carbon",
+            "nmvoc",
+            "black_carbon",
+            "ammonia",
         ]
 
         # Sort the parameters alphabetically
@@ -290,41 +312,48 @@ async def get_stats_all(entity: str, db: Session = Depends(get_db)):
 
         for parameter in parameters:
             # Calculate the mean for the parameter directly in the database, function avg available
-            mean = db.query(func.avg(getattr(AirPollutionData, parameter))).filter(
-                AirPollutionData.entity == entity).scalar()
+            mean = (
+                db.query(func.avg(getattr(AirPollutionData, parameter)))
+                .filter(AirPollutionData.entity == entity)
+                .scalar()
+            )
             mean = round(mean, 3) if mean is not None else None
             # Custom SQL query to calculate the median
-            median_query = text(f""" 
-            WITH ranked_data AS ( 
-                SELECT {parameter},   
-                       ROW_NUMBER() OVER (ORDER BY {parameter}) AS row_num,  
-                       COUNT(*) OVER () AS total_rows  
-                FROM air_pollution_data   
-                WHERE entity = :entity   
-            )     
-            SELECT AVG({parameter}) AS median_value  
-            FROM ranked_data     
-            WHERE row_num IN (   
-                (total_rows + 1) / 2,  
-                (total_rows + 2) / 2  
-            ) 
-            """)
+            median_query = text(
+                f"""
+            WITH ranked_data AS (
+                SELECT {parameter},
+                       ROW_NUMBER() OVER (ORDER BY {parameter}) AS row_num,
+                       COUNT(*) OVER () AS total_rows
+                FROM air_pollution_data
+                WHERE entity = :entity
+            )
+            SELECT AVG({parameter}) AS median_value
+            FROM ranked_data
+            WHERE row_num IN (
+                (total_rows + 1) / 2,
+                (total_rows + 2) / 2
+            )
+            """
+            )
 
             median_result = db.execute(median_query, {"entity": entity}).fetchone()
             median = round(median_result[0], 3) if median_result and median_result[0] is not None else None
 
             # Custom SQL query to calculate the standard deviation
-            stddev_query = text(f""" 
-            WITH avg_data AS ( 
-                SELECT avg({parameter}) as avg_{parameter}  
-                FROM air_pollution_data  
-                WHERE entity = :entity  
-            ) 
-            SELECT sqrt(sum(power(t.{parameter} - avg_data.avg_{parameter}, 2)) / nullif(count(*) - 1, 0)) as stddev  
-            FROM air_pollution_data t  
-            JOIN avg_data ON 1=1  
-            WHERE t.entity = :entity   
-            """)
+            stddev_query = text(
+                f"""
+            WITH avg_data AS (
+                SELECT avg({parameter}) as avg_{parameter}
+                FROM air_pollution_data
+                WHERE entity = :entity
+            )
+            SELECT sqrt(sum(power(t.{parameter} - avg_data.avg_{parameter}, 2)) / nullif(count(*) - 1, 0)) as stddev
+            FROM air_pollution_data t
+            JOIN avg_data ON 1=1
+            WHERE t.entity = :entity
+            """
+            )
 
             stddev_result = db.execute(stddev_query, {"entity": entity}).fetchone()
             stddev = round(stddev_result[0], 3) if stddev_result and stddev_result[0] is not None else None
@@ -335,41 +364,47 @@ async def get_stats_all(entity: str, db: Session = Depends(get_db)):
             stats[parameter]["stddev"] = stddev
 
         # Generate the HTML content for the statistics
-        stats_html = "".join([
-            f""" 
-            <section class="stat-section"> 
+        stats_html = "".join(
+            [
+                f"""
+            <section class="stat-section">
                 <h3>{'Non-methane Volatile Organic Compounds (NMVOC)' if param == 'nmvoc'
             else 'Nitrogen Oxide (NOx)' if param == 'nitrogen_oxide'
             else 'Carbon monoxide (CO)' if param == 'carbon_monoxide'
             else 'Sulphur dioxide (SO₂)' if param == 'sulphur_dioxide'
-            else 'Ammonia (NH₃)' if param == 'ammonia' else param.replace('_', ' ').title()}</h3> 
-                <ul class="stat-list"> 
-                    <li><strong>Mean:</strong> {stats[param]['mean']}</li> 
-                    <li><strong>Median:</strong> {stats[param]['median']}</li> 
-                    <li><strong>Standard Deviation:</strong> {stats[param]['stddev']}</li> 
-                </ul> 
-            </section> 
-            """ for param in parameters
-        ])
+            else 'Ammonia (NH₃)' if param == 'ammonia' else param.replace('_', ' ').title()}</h3>
+                <ul class="stat-list">
+                    <li><strong>Mean:</strong> > {stats[param]['mean']}</li>
+                    <li><strong>Median:</strong> {stats[param]['median']}</li>
+                    <li><strong>Standard Deviation:</strong> {stats[param]['stddev']}</li>
+                </ul>
+            </section>
+            """
+                for param in parameters
+            ]
+        )
 
         # Return the statistics as an HTML response.
-        return HTMLResponse(content=f""" 
-        <html> 
+        return HTMLResponse(
+            content=f"""
+        <html>
         <head>
             <link rel="stylesheet" type="text/css" href="/static/styles.css">
-        </head>  
-        <body> 
-            <div class="header">Statistics for all parameters for {entity} for all years:</div> 
-            <div class="container"> 
-                {stats_html} 
-            </div> 
-        </body> 
-        </html> 
-        """)
+        </head>
+        <body>
+            <div class="header">Statistics for all parameters for {entity} for all years:</div>
+            <div class="container">
+                {stats_html}
+            </div>
+        </body>
+        </html>
+        """
+        )
 
     except Exception as e:
-        logger.error("Error in get_stats_all endpoint", exc_info=True)
+        logger.error(f"Error in get_stats_all endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
 
 # Endpoint to add new air pollution data.
 @app.post("/data")
