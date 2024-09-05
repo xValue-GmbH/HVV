@@ -46,7 +46,7 @@ def test_main_endpoint():
     response = client.get("/")  # Simulate a GET request to the root endpoint
     assert response.status_code == 200  # Check that the response status code is 200 (OK)
     assert (
-        "<h1>Welcome to Air Pollution Data Viewer</h1>" in response.text
+        "Welcome to Air Pollution Data Viewer</div>" in response.text
     )  # Check that the response contains the expected HTML content
     assert '<form action="/get_stats/" method="post">' in response.text
     assert '<label for="entity">Select an entity:</label>' in response.text
@@ -57,7 +57,7 @@ def test_get_stats_no_year_range():
     response = client.post("/get_stats/", data={"entity": "Albania"})  # Simulate a POST request without a year range
     assert response.status_code == 200  # Check that the response status code is 200 (OK)
     assert (
-        "<p>Statistics for all parameters for Albania for all years:</p>" in response.text
+        "Statistics for all parameters for Albania for all years:</div>" in response.text
     )  # Check that the response contains the expected HTML content
 
 
@@ -150,11 +150,11 @@ def test_get_stats_valid_data():
     )  # Simulate a POST request with valid data
     assert response.status_code == 200  # Check that the response status code is 200 (OK)
     assert (
-        "<p>Statistics for all parameters for MyCountry from 2000 to 2002:</p>" in response.text
+        "Statistics for all parameters for MyCountry from 2000 to 2002:</div>" in response.text
     )  # Check that the response contains the expected HTML content
     # Get the HTML content and remove line breaks and spaces for assertion
     html_content = response.text.replace("\n", "").replace("\r", "").replace(" ", "").strip()
     assert "<h3>NitrogenOxide(NOx)</h3>" in html_content
-    assert "<li>Mean: 15.0</li>" in response.text
-    assert "<li>Median: 15.0</li>" in response.text
-    assert "<li>Standard Deviation: 5.0</li>" in response.text
+    assert "<li><strong>Mean:</strong>15.0</li>" in html_content
+    assert "<li><strong>Median:</strong>15.0</li>" in html_content
+    assert "<li><strong>StandardDeviation:</strong>5.0</li>" in html_content

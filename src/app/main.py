@@ -374,7 +374,7 @@ async def get_stats_all(entity: str, db: Session = Depends(get_db)) -> HTMLRespo
             else 'Sulphur dioxide (SO₂)' if param == 'sulphur_dioxide'
             else 'Ammonia (NH₃)' if param == 'ammonia' else param.replace('_', ' ').title()}</h3>
                 <ul class="stat-list">
-                    <li><strong>Mean:</strong> > {stats[param]['mean']}</li>
+                    <li><strong>Mean:</strong>  {stats[param]['mean']}</li>
                     <li><strong>Median:</strong> {stats[param]['median']}</li>
                     <li><strong>Standard Deviation:</strong> {stats[param]['stddev']}</li>
                 </ul>
